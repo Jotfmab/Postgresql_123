@@ -82,12 +82,12 @@ def load_items_data() -> pd.DataFrame:
 def save_timeline_data(df: pd.DataFrame):
     engine = get_engine()
     # Replace the table with the updated DataFrame
-    df.to_sql("construction_timeline_3", engine, if_exists="replace", index=False)
+    df.to_sql("Contrcution_Timeline", engine, if_exists="replace", index=False)
     # Removed cache clearing so that the DataFrame state is preserved
 
 def save_items_data(df: pd.DataFrame):
     engine = get_engine()
-    df.to_sql("cleaned_items", engine, if_exists="replace", index=False)
+    df.to_sql("Items_Order", engine, if_exists="replace", index=False)
     # Removed cache clearing to avoid UI refresh issues
 
 # ------------------------------------------------------------------------------
@@ -329,7 +329,7 @@ df_filtered.drop(columns=normcols, inplace=True, errors="ignore")
 # ------------------------------------------------------------------------------
 def create_gantt_chart(df_input: pd.DataFrame, color_by_status: bool = True):
     needed = ["Start Date", "End Date", "Status", "Progress"]
-    missing = [c for c in needed if c not in df_input.columns]
+    missing = [c for c in df_input.columns if c not in df_input.columns]
     if missing:
         return px.scatter(title=f"Cannot build Gantt: missing {missing}")
     if df_input.empty:
