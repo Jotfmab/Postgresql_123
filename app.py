@@ -24,13 +24,12 @@ def get_engine():
 @st.cache_data(ttl=60)
 def load_timeline_data() -> pd.DataFrame:
     engine = get_engine()
-    # Note the table name is explicitly quoted
+    # Explicitly quote the table name for case sensitivity
     query = 'SELECT * FROM "Contrcution_Timeline"'
     df = pd.read_sql(query, engine)
     # Clean column names (trim any extra spaces)
     df.columns = df.columns.str.strip()
-    # Rename columns to standard names for our app.
-    # Note: Added mapping for "progress" to "Progress".
+    # Rename columns to standard names for our app (including mapping "progress" to "Progress")
     mapping = {
         "activity": "Activity",
         "item": "Item",
@@ -50,7 +49,6 @@ def load_timeline_data() -> pd.DataFrame:
         df["Start Date"] = pd.to_datetime(df["Start Date"], errors="coerce")
     if "End Date" in df.columns:
         df["End Date"] = pd.to_datetime(df["End Date"], errors="coerce")
-    # Removed addition of Progress column (it already exists in the table)
     df["Status"] = df["Status"].astype(str).fillna("Not Started")
     return df
 
@@ -84,14 +82,16 @@ def load_items_data() -> pd.DataFrame:
 # ------------------------------------------------------------------------------
 def save_timeline_data(df: pd.DataFrame):
     engine = get_engine()
-    # Save using the explicitly quoted table name
+    # Write to the database using the explicitly quoted table name
     df.to_sql('"Contrcution_Timeline"', engine, if_exists="replace", index=False)
-    # Cache clearing is removed to preserve UI state
+    # Clear the cached timeline data so that future loads reflect the changes
+    load_timeline_data.clear()
 
 def save_items_data(df: pd.DataFrame):
     engine = get_engine()
     df.to_sql('"Items_Order"', engine, if_exists="replace", index=False)
-    # Cache clearing removed to avoid UI refresh issues
+    # Clear the cached items data so that future loads reflect the changes
+    load_items_data.clear()
 
 # ------------------------------------------------------------------------------
 # APP CONFIGURATION & TITLE
