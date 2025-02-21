@@ -29,7 +29,8 @@ def load_timeline_data() -> pd.DataFrame:
     df = pd.read_sql(query, engine)
     # Clean column names (trim any extra spaces)
     df.columns = df.columns.str.strip()
-    # Rename columns to standard names for our app
+    # Rename columns to standard names for our app.
+    # Note: Added mapping for "progress" to "Progress".
     mapping = {
         "activity": "Activity",
         "item": "Item",
@@ -40,7 +41,8 @@ def load_timeline_data() -> pd.DataFrame:
         "start_date": "Start Date",
         "end_date": "End Date",
         "status": "Status",
-        "workdays": "Workdays"
+        "workdays": "Workdays",
+        "progress": "Progress"
     }
     df.rename(columns=mapping, inplace=True)
     # Convert dates if available
@@ -129,7 +131,6 @@ with st.sidebar.expander("Row & Column Management (Main Timeline)"):
                 try:
                     save_timeline_data(df_main)
                     st.sidebar.success(f"Row {idx} deleted and saved.")
-                    # Do not reload the data to preserve current UI state
                 except Exception as e:
                     st.sidebar.error(f"Error saving data: {e}")
             else:
