@@ -24,7 +24,7 @@ def get_engine():
 @st.cache_data(ttl=60)
 def load_timeline_data() -> pd.DataFrame:
     engine = get_engine()
-    # Explicitly quote the table name for case sensitivity
+    # Explicitly quote the table name in the query for case sensitivity
     query = 'SELECT * FROM "Contrcution_Timeline"'
     df = pd.read_sql(query, engine)
     # Clean column names (trim any extra spaces)
@@ -82,15 +82,17 @@ def load_items_data() -> pd.DataFrame:
 # ------------------------------------------------------------------------------
 def save_timeline_data(df: pd.DataFrame):
     engine = get_engine()
-    # Write to the database using the explicitly quoted table name
-    df.to_sql('"Contrcution_Timeline"', engine, if_exists="replace", index=False)
+    # Use a transaction to ensure changes are committed
+    with engine.begin() as conn:
+        # Pass the table name directly so that SQLAlchemy handles quoting properly
+        df.to_sql("Contrcution_Timeline", conn, if_exists="replace", index=False)
     # Clear the cached timeline data so that future loads reflect the changes
     load_timeline_data.clear()
 
 def save_items_data(df: pd.DataFrame):
     engine = get_engine()
-    df.to_sql('"Items_Order"', engine, if_exists="replace", index=False)
-    # Clear the cached items data so that future loads reflect the changes
+    with engine.begin() as conn:
+        df.to_sql("Items_Order", conn, if_exists="replace", index=False)
     load_items_data.clear()
 
 # ------------------------------------------------------------------------------
