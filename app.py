@@ -24,7 +24,8 @@ def get_engine():
 @st.cache_data(ttl=60)
 def load_timeline_data() -> pd.DataFrame:
     engine = get_engine()
-    query = "SELECT * FROM Contrcution_Timeline"
+    # Note the table name is explicitly quoted
+    query = 'SELECT * FROM "Contrcution_Timeline"'
     df = pd.read_sql(query, engine)
     # Clean column names (trim any extra spaces)
     df.columns = df.columns.str.strip()
@@ -57,7 +58,7 @@ def load_timeline_data() -> pd.DataFrame:
 @st.cache_data(ttl=60)
 def load_items_data() -> pd.DataFrame:
     engine = get_engine()
-    query = "SELECT * FROM Items_Order"
+    query = 'SELECT * FROM "Items_Order"'
     df = pd.read_sql(query, engine)
     df.columns = df.columns.str.strip()
     mapping = {
@@ -81,14 +82,14 @@ def load_items_data() -> pd.DataFrame:
 # ------------------------------------------------------------------------------
 def save_timeline_data(df: pd.DataFrame):
     engine = get_engine()
-    # Replace the table with the updated DataFrame
-    df.to_sql("Contrcution_Timeline", engine, if_exists="replace", index=False)
-    # Removed cache clearing so that the DataFrame state is preserved
+    # Save using the explicitly quoted table name
+    df.to_sql('"Contrcution_Timeline"', engine, if_exists="replace", index=False)
+    # Cache clearing is removed to preserve UI state
 
 def save_items_data(df: pd.DataFrame):
     engine = get_engine()
-    df.to_sql("Items_Order", engine, if_exists="replace", index=False)
-    # Removed cache clearing to avoid UI refresh issues
+    df.to_sql('"Items_Order"', engine, if_exists="replace", index=False)
+    # Cache clearing removed to avoid UI refresh issues
 
 # ------------------------------------------------------------------------------
 # APP CONFIGURATION & TITLE
@@ -128,7 +129,7 @@ with st.sidebar.expander("Row & Column Management (Main Timeline)"):
                 try:
                     save_timeline_data(df_main)
                     st.sidebar.success(f"Row {idx} deleted and saved.")
-                    # Do not reload the data to preserve the current table state
+                    # Do not reload the data to preserve current UI state
                 except Exception as e:
                     st.sidebar.error(f"Error saving data: {e}")
             else:
@@ -153,7 +154,6 @@ with st.sidebar.expander("Row & Column Management (Main Timeline)"):
             try:
                 save_timeline_data(df_main)
                 st.sidebar.success(f"Column '{new_col_name}' added and saved.")
-                # Do not reload the data here
             except Exception as e:
                 st.sidebar.error(f"Error saving data: {e}")
         else:
@@ -171,14 +171,12 @@ with st.sidebar.expander("Row & Column Management (Main Timeline)"):
             try:
                 save_timeline_data(df_main)
                 st.sidebar.success(f"Column '{col_to_delete}' deleted and saved.")
-                # No reload after deletion
             except Exception as e:
                 st.sidebar.error(f"Error saving data: {e}")
         else:
             st.sidebar.warning("Please select a valid column.")
 
 # Configure columns for the data editor.
-# For Activity, Item, Task, Room, and Location, we use TextColumn so users can type freely.
 column_config_main = {}
 for col in ["Activity", "Item", "Task", "Room", "Location"]:
     if col in df_main.columns:
@@ -186,17 +184,14 @@ for col in ["Activity", "Item", "Task", "Room", "Location"]:
             col,
             help=f"Enter or select a value for {col}."
         )
-# For Status, we provide fixed options.
 if "Status" in df_main.columns:
     column_config_main["Status"] = st.column_config.SelectboxColumn(
         "Status", options=["Finished", "In Progress", "Not Started", "Delayed"], help="Status"
     )
-# For Progress, use a NumberColumn.
 if "Progress" in df_main.columns:
     column_config_main["Progress"] = st.column_config.NumberColumn(
         "Progress", min_value=0, max_value=100, step=1, help="Progress %"
     )
-# For dates, use DateColumn.
 if "Start Date" in df_main.columns:
     column_config_main["Start Date"] = st.column_config.DateColumn(
         "Start Date", help="Project start date"
@@ -217,7 +212,6 @@ edited_df_main = st.data_editor(
 if "Status" in edited_df_main.columns:
     edited_df_main["Status"] = edited_df_main["Status"].astype(str).fillna("Not Started")
 
-# When saving, auto-update Progress for tasks marked Finished.
 if st.button("Save Updates (Main Timeline)"):
     edited_df_main.loc[edited_df_main["Status"].str.lower() == "finished", "Progress"] = 100
     try:
@@ -236,7 +230,6 @@ def norm_unique(df_input: pd.DataFrame, col: str):
         return []
     return sorted(set(df_input[col].dropna().astype(str).str.lower().str.strip()))
 
-# Initialize filter session state
 if "activity_filter" not in st.session_state:
     st.session_state["activity_filter"] = []
 if "item_filter" not in st.session_state:
@@ -292,7 +285,6 @@ group_by_item = st.sidebar.checkbox("Group by Item", value=False)
 group_by_task = st.sidebar.checkbox("Group by Task", value=False)
 group_by_location = st.sidebar.checkbox("Group by Location", value=False)
 
-# Apply filters on the main DataFrame copy for the Gantt chart
 df_filtered = edited_df_main.copy()
 for col in ["Activity", "Item", "Task", "Room", "Location", "Status"]:
     df_filtered[col + "_norm"] = df_filtered[col].astype(str).str.lower().str.strip()
@@ -329,7 +321,7 @@ df_filtered.drop(columns=normcols, inplace=True, errors="ignore")
 # ------------------------------------------------------------------------------
 def create_gantt_chart(df_input: pd.DataFrame, color_by_status: bool = True):
     needed = ["Start Date", "End Date", "Status", "Progress"]
-    missing = [c for c in df_input.columns if c not in df_input.columns]
+    missing = [c for c in needed if c not in df_input.columns]
     if missing:
         return px.scatter(title=f"Cannot build Gantt: missing {missing}")
     if df_input.empty:
@@ -549,7 +541,6 @@ df_items["Order Status"] = df_items["Order Status"].astype(str)
 df_items["Delivery Status"] = df_items["Delivery Status"].astype(str)
 df_items["Notes"] = df_items["Notes"].astype(str)
 
-# Configure columns for the items table.
 items_col_config = {}
 items_col_config["Item"] = st.column_config.TextColumn(
     "Item",
