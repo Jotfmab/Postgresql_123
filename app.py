@@ -24,7 +24,7 @@ def get_engine():
 @st.cache_data(ttl=60)
 def load_timeline_data() -> pd.DataFrame:
     engine = get_engine()
-    query = "SELECT * FROM construction_timeline_3"
+    query = "SELECT * FROM Contrcution_Timeline"
     df = pd.read_sql(query, engine)
     # Clean column names (trim any extra spaces)
     df.columns = df.columns.str.strip()
@@ -47,10 +47,7 @@ def load_timeline_data() -> pd.DataFrame:
         df["Start Date"] = pd.to_datetime(df["Start Date"], errors="coerce")
     if "End Date" in df.columns:
         df["End Date"] = pd.to_datetime(df["End Date"], errors="coerce")
-    # Add Progress column if missing
-    if "Progress" not in df.columns:
-        df["Progress"] = 0.0
-    # Make sure Status is string
+    # Removed addition of Progress column (it already exists in the table)
     df["Status"] = df["Status"].astype(str).fillna("Not Started")
     return df
 
@@ -60,7 +57,7 @@ def load_timeline_data() -> pd.DataFrame:
 @st.cache_data(ttl=60)
 def load_items_data() -> pd.DataFrame:
     engine = get_engine()
-    query = "SELECT * FROM cleaned_items"
+    query = "SELECT * FROM Items_Order"
     df = pd.read_sql(query, engine)
     df.columns = df.columns.str.strip()
     mapping = {
@@ -86,12 +83,12 @@ def save_timeline_data(df: pd.DataFrame):
     engine = get_engine()
     # Replace the table with the updated DataFrame
     df.to_sql("construction_timeline_3", engine, if_exists="replace", index=False)
-    load_timeline_data.clear()  # clear cache so that reload shows changes
+    # Removed cache clearing so that the DataFrame state is preserved
 
 def save_items_data(df: pd.DataFrame):
     engine = get_engine()
     df.to_sql("cleaned_items", engine, if_exists="replace", index=False)
-    load_items_data.clear()
+    # Removed cache clearing to avoid UI refresh issues
 
 # ------------------------------------------------------------------------------
 # APP CONFIGURATION & TITLE
@@ -131,7 +128,7 @@ with st.sidebar.expander("Row & Column Management (Main Timeline)"):
                 try:
                     save_timeline_data(df_main)
                     st.sidebar.success(f"Row {idx} deleted and saved.")
-                    df_main = load_timeline_data()  # reload updated data
+                    # Do not reload the data to preserve the current table state
                 except Exception as e:
                     st.sidebar.error(f"Error saving data: {e}")
             else:
@@ -156,7 +153,7 @@ with st.sidebar.expander("Row & Column Management (Main Timeline)"):
             try:
                 save_timeline_data(df_main)
                 st.sidebar.success(f"Column '{new_col_name}' added and saved.")
-                df_main = load_timeline_data()
+                # Do not reload the data here
             except Exception as e:
                 st.sidebar.error(f"Error saving data: {e}")
         else:
@@ -174,7 +171,7 @@ with st.sidebar.expander("Row & Column Management (Main Timeline)"):
             try:
                 save_timeline_data(df_main)
                 st.sidebar.success(f"Column '{col_to_delete}' deleted and saved.")
-                df_main = load_timeline_data()
+                # No reload after deletion
             except Exception as e:
                 st.sidebar.error(f"Error saving data: {e}")
         else:
@@ -213,7 +210,8 @@ edited_df_main = st.data_editor(
     df_main,
     column_config=column_config_main,
     use_container_width=True,
-    num_rows="dynamic"
+    num_rows="dynamic",
+    key="timeline_data_editor"
 )
 
 if "Status" in edited_df_main.columns:
@@ -552,7 +550,6 @@ df_items["Delivery Status"] = df_items["Delivery Status"].astype(str)
 df_items["Notes"] = df_items["Notes"].astype(str)
 
 # Configure columns for the items table.
-# For Item, we use a TextColumn to allow freeform input.
 items_col_config = {}
 items_col_config["Item"] = st.column_config.TextColumn(
     "Item",
@@ -583,7 +580,8 @@ edited_df_items = st.data_editor(
     df_items,
     column_config=items_col_config,
     use_container_width=True,
-    num_rows="dynamic"
+    num_rows="dynamic",
+    key="items_data_editor"
 )
 
 if st.button("Save Items Table"):
